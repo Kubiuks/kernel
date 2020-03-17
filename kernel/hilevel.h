@@ -25,13 +25,14 @@
 
 #include "lolevel.h"
 #include     "int.h"
+#include    "libc.h"
 
 // Include functionality relating to the console.
 
 #include "console.h"
 
 
-#define MAX_PROCS 20
+#define MAX_PROCS 16
 
 typedef int pid_t;
 
@@ -51,6 +52,12 @@ typedef struct {
 } ctx_t;
 
 typedef struct {
+  bool in_use; // indicates wheter the chunk is assigned to some process
+  uint32_t    tos; // address of Top of Stack (ToS)
+  pid_t pid;
+} stack_chunk;
+
+typedef struct {
        pid_t    pid; // Process IDentifier (PID)
     status_t status; // current status
     uint32_t    tos; // address of Top of Stack (ToS)
@@ -58,5 +65,6 @@ typedef struct {
   uint32_t priority; // current priority of the Process
   uint32_t base_priority; // base priority of the Process
 } pcb_t;
+
 
 #endif
