@@ -98,7 +98,7 @@ void main_console() {
 
     // step 1: write command prompt, then read command.
 
-    puts( "console$ ", 7 ); gets( cmd, MAX_CMD_CHARS );
+    puts( "console: $ ", 9 ); gets( cmd, MAX_CMD_CHARS );
 
     // step 2: tokenize command.
 
@@ -124,9 +124,6 @@ void main_console() {
     }
     else if( 0 == strcmp( cmd_argv[ 0 ], "terminate" ) ) {
       kill( atoi( cmd_argv[ 1 ] ), SIG_TERM );
-    }
-    else if(0 == strcmp( cmd_argv[ 0 ], "a" )){
-      puts( "aaa$ ", 3 );
     }
     else {
       puts( "unknown command\n", 16 );

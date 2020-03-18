@@ -8,7 +8,7 @@
 #include "hilevel.h"
 
 pcb_t procTab[ MAX_PROCS ]; pcb_t* executing = NULL; int CURRENT_PROCS = 0;
-stack_chunk stack[ MAX_PROCS ];
+stack_chunk stack[ MAX_PROCS ]; int current_procs[MAX_PROCS];
 
 
 void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
@@ -36,6 +36,16 @@ void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
 
   return;
 }
+
+void set_current_procs(int i){
+  if(current_procs[i] = 0){
+    current_procs[i] = 1;
+  }
+  else{
+    current_procs[i] = 0;
+  }
+}
+
 uint32_t find_priority(){
   uint32_t max = 0;
   uint32_t process = 0;
@@ -59,7 +69,10 @@ void schedule( ctx_t* ctx ) {
   uint32_t next = find_priority();
 
   for(int i=0; i<MAX_PROCS; i++){
-    if(executing->pid == procTab[ i ].pid ){
+    if(procTab[ i ].status == STATUS_INVALID || procTab[ i ].status == STATUS_TERMINATED){
+      continue;
+    }
+    else if (procTab[i].pid == executing->pid){
       dispatch( ctx, &procTab[ i ], &procTab[ next ] );
       procTab[ i ].status = STATUS_READY;
       procTab[ i ].priority = procTab[ i ].base_priority;
@@ -123,6 +136,7 @@ void hilevel_handler_rst(ctx_t* ctx ) {
   procTab[ 0 ].ctx.sp   = procTab[ 0 ].tos;
   procTab[ 0 ].priority = 0;
   procTab[ 0 ].base_priority = 0;
+  procTab[ 0 ].parent_pid = NULL;
 
   set_stack(0);
 
@@ -176,6 +190,7 @@ void hilevel_handler_irq(ctx_t* ctx) {
   // Step 4: handle the interrupt, then clear (or reset) the source.
 
   if( id == GIC_SOURCE_TIMER0 ) {
+
     PL011_putc( UART0, 'T', true ); TIMER0->Timer1IntClr = 0x01;
     schedule(ctx);
   }
@@ -235,6 +250,7 @@ void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   procTab[ child ].tos      = ( uint32_t )( stack[ child_stack ].tos );
   procTab[ child ].priority = procTab[ parent ].priority;
   procTab[ child ].base_priority = procTab[ parent ].base_priority;
+  procTab[ child ].parent_pid = parent;
 
   set_stack(child);
   memcpy((uint32_t)stack[child_stack].tos - 0x00001000,
@@ -244,6 +260,7 @@ void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   procTab[ child ].ctx.sp = (uint32_t)procTab[ child ].tos - ((uint32_t)procTab[parent].tos - ctx->sp) ;
   procTab[ parent ].ctx.gpr[0] = child;
   procTab[ child ].ctx.gpr[0] = 0;
+  CURRENT_PROCS++;
 }
 
 void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
@@ -297,11 +314,24 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
     }
     case SYS_EXIT : {//exit
       PL011_putc( UART0, 'E', true );
+      uint32_t x = (uint32_t)(ctx->gpr[0]);
+
+      if(x == EXIT_SUCCESS){
+        int proc_i = find_index_by_pid(executing->pid);
+        int stack_i = stack_index_by_pid(executing->pid);
+        procTab[proc_i].status = STATUS_TERMINATED;
+        stack[stack_i].in_use = false;
+        stack[stack_i].pid = 0;
+        executing = &procTab[find_index_by_pid(executing->parent_pid)];
+      }
+      else{
+
+      }
+
 
       break;
     }
     case SYS_EXEC : {//exec
-      PL011_putc( UART0, 'e', true );
       uint32_t x = (uint32_t)(ctx->gpr[0]);
       ctx->pc = (uint32_t)(x);
       ctx->sp = procTab[ find_index_by_pid(executing->pid) ].tos;
