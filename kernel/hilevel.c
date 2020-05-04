@@ -12,24 +12,34 @@ stack_chunk stack[ MAX_PROCS ]; int current_procs[MAX_PROCS];
 
 
 void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
-  char prev_pid = '?', next_pid = '?';
+  char prev_pid[] = "?", next_pid[] = "?";
 
   if( NULL != prev ) {
     memcpy( &prev->ctx, ctx, sizeof( ctx_t ) ); // preserve execution context of P_{prev}
-    prev_pid = '0' + prev->pid;
+    itoa(prev_pid, prev->pid);
   }
   if( NULL != next ) {
     memcpy( ctx, &next->ctx, sizeof( ctx_t ) ); // restore  execution context of P_{next}
-    next_pid = '0' + next->pid;
+    itoa(next_pid, next->pid);
   }
 
 
 
     PL011_putc( UART0, '[',      true );
-    PL011_putc( UART0, prev_pid, true );
+    if(strlen(prev_pid) == 1){
+      write( STDOUT_FILENO, prev_pid, 1 );
+    }
+    else{
+      write( STDOUT_FILENO, prev_pid, 2 );
+    }
     PL011_putc( UART0, '-',      true );
     PL011_putc( UART0, '>',      true );
-    PL011_putc( UART0, next_pid, true );
+    if(strlen(next_pid) == 1){
+      write( STDOUT_FILENO, next_pid, 1 );
+    }
+    else{
+      write( STDOUT_FILENO, next_pid, 2 );
+    }
     PL011_putc( UART0, ']',      true );
 
     executing = next;                           // update   executing process to P_{next}
@@ -88,12 +98,9 @@ void schedule( ctx_t* ctx ) {
 
 
 extern void     main_console();
-extern uint32_t tos_console;
-extern void     main_P1();
-extern void     main_P2();
-extern void     main_P3();
-extern uint32_t tos_procs;
+extern uint32_t tos_irq;
 extern uint32_t tos_svc;
+extern uint32_t tos_procs;
 
 void set_stack(pid_t pid){
   stack[ pid ].in_use = true;
@@ -112,7 +119,7 @@ void hilevel_handler_rst(ctx_t* ctx ) {
   for( int i = 0; i < MAX_PROCS; i++ ) {
     procTab[ i ].status = STATUS_INVALID;
     stack[ i ].in_use = false;
-    stack[ i ].tos = ( uint32_t )( &tos_svc ) + (i+1) * 0x00001000;
+    stack[ i ].tos = ( uint32_t )( &tos_procs ) + (i+1) * 0x00001000;
   }
 
 
@@ -140,10 +147,7 @@ void hilevel_handler_rst(ctx_t* ctx ) {
 
   set_stack(0);
 
-  /* Once the PCBs are initialised, we arbitrarily select the 0-th PCB to be
-   * executed: there is no need to preserve the execution context, since it
-   * is invalid on reset (i.e., no process was previously executing).
-   */
+
    for( int i = 0; i < MAX_PROCS; i++ ) {
      if(procTab[ i ].status == STATUS_READY){
        CURRENT_PROCS++;

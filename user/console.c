@@ -39,6 +39,7 @@ extern void main_P2();
 extern void main_P3();
 extern void main_P4();
 extern void main_P5();
+extern void main_DINE();
 
 void* load( char* x ) {
   if     ( 0 == strcmp( x, "P1" ) ) {
@@ -55,6 +56,9 @@ void* load( char* x ) {
   }
   else if( 0 == strcmp( x, "P5" ) ) {
     return &main_P5;
+  }
+  else if( 0 == strcmp( x, "DINE" ) ) {
+    return &main_DINE;
   }
 
   return NULL;

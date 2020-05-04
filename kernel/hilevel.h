@@ -32,7 +32,7 @@
 #include "console.h"
 
 
-#define MAX_PROCS 16
+#define MAX_PROCS 20
 
 typedef int pid_t;
 
