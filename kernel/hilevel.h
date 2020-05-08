@@ -32,7 +32,8 @@
 #include "console.h"
 
 
-#define MAX_PROCS 20
+#define MAX_PROCS 40
+#define MIN_FD 3
 
 typedef int pid_t;
 
@@ -52,20 +53,33 @@ typedef struct {
 } ctx_t;
 
 typedef struct {
-  bool in_use; // indicates wheter the chunk is assigned to some process
+  bool in_use;     // indicates wheter the chunk is assigned to some process
   uint32_t    tos; // address of Top of Stack (ToS)
   pid_t pid;
 } stack_chunk;
 
 typedef struct {
-       pid_t    pid; // Process IDentifier (PID)
-    status_t status; // current status
-    uint32_t    tos; // address of Top of Stack (ToS)
-       ctx_t    ctx; // execution context
-  uint32_t priority; // current priority of the Process
+       pid_t    pid;      // Process IDentifier (PID)
+    status_t status;      // current status
+    uint32_t    tos;      // address of Top of Stack (ToS)
+       ctx_t    ctx;      // execution context
+  uint32_t priority;      // current priority of the Process
   uint32_t base_priority; // base priority of the Process
-  pid_t parent_pid; //pid of the parent
+  pid_t parent_pid;       // pid of the parent
+  int  fd;                // file descriptor for pipes
 } pcb_t;
 
+typedef struct {
+  bool in_use;     // indicates wheter the fd is assigned to some process
+  int fd; //file descriptor
+} fd_struct;
+
+typedef struct {
+  int   id;          // id of the pipe
+  bool in_use;       // indicates wheter the pipe is assigned to some process
+  int   fd_write;    // writing end of the pipe
+  char  data[100];   // data being send through the channel
+  int   fd_read;     // reading end of the pipe
+} pipe_struct;
 
 #endif

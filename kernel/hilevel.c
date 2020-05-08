@@ -9,6 +9,7 @@
 
 pcb_t procTab[ MAX_PROCS ]; pcb_t* executing = NULL; int CURRENT_PROCS = 0;
 stack_chunk stack[ MAX_PROCS ]; int current_procs[MAX_PROCS];
+fd_struct fd_array[MAX_PROCS]; pipe_struct pipes[2 * MAX_PROCS];
 
 
 void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
@@ -47,14 +48,6 @@ void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
   return;
 }
 
-void set_current_procs(int i){
-  if(current_procs[i] = 0){
-    current_procs[i] = 1;
-  }
-  else{
-    current_procs[i] = 0;
-  }
-}
 
 uint32_t find_priority(){
   uint32_t max = 0;
@@ -79,7 +72,9 @@ void schedule( ctx_t* ctx ) {
   uint32_t next = find_priority();
 
   for(int i=0; i<MAX_PROCS; i++){
-    if(procTab[ i ].status == STATUS_INVALID || procTab[ i ].status == STATUS_TERMINATED){
+    if(   procTab[ i ].status == STATUS_INVALID
+       || procTab[ i ].status == STATUS_TERMINATED
+       || procTab[ i ].status == STATUS_WAITING){
       continue;
     }
     else if (procTab[i].pid == executing->pid){
@@ -107,6 +102,23 @@ void set_stack(pid_t pid){
   stack[ pid ].pid = pid;
 }
 
+
+void switch_fd_array(int index){
+  if(fd_array[index].in_use == false){
+     fd_array[index].in_use = true;
+  } else {
+    fd_array[index].in_use = false;
+  }
+}
+
+void switch_pipe_in_use(int index){
+  if(pipes[index].in_use == false){
+     pipes[index].in_use = true;
+  } else {
+    pipes[index].in_use = false;
+  }
+}
+
 void hilevel_handler_rst(ctx_t* ctx ) {
 
 
@@ -118,8 +130,20 @@ void hilevel_handler_rst(ctx_t* ctx ) {
 
   for( int i = 0; i < MAX_PROCS; i++ ) {
     procTab[ i ].status = STATUS_INVALID;
+    procTab[ i ].fd = -1;
     stack[ i ].in_use = false;
     stack[ i ].tos = ( uint32_t )( &tos_procs ) + (i+1) * 0x00001000;
+    fd_array[ i ].in_use = false;
+    fd_array[ i ].fd = i;
+  }
+
+  switch_fd_array(0);
+  switch_fd_array(1);
+  switch_fd_array(2);
+
+  for( int i = 0; i < 2 * MAX_PROCS; i++ ) {
+      pipes[i].id = i;
+      switch_pipe_in_use(i);
   }
 
 
@@ -143,8 +167,9 @@ void hilevel_handler_rst(ctx_t* ctx ) {
   procTab[ 0 ].ctx.sp   = procTab[ 0 ].tos;
   procTab[ 0 ].priority = 0;
   procTab[ 0 ].base_priority = 0;
-  procTab[ 0 ].parent_pid = NULL;
+  procTab[ 0 ].fd = fd_array[3].fd;
 
+  switch_fd_array(3);
   set_stack(0);
 
 
@@ -242,6 +267,34 @@ uint32_t free_procTab_index(){
   return -1;
 }
 
+int find_free_pipe(){
+    for(int i = 0; i < 2 * MAX_PROCS; i++){
+      if(pipes[i].in_use == false){
+        return i;
+      }
+    }
+    return -1;
+}
+
+int find_free_fd(){
+  for(int i = MIN_FD; i < MAX_PROCS; i++){
+    if(fd_array[i].in_use == false){
+      return i;
+    }
+  }
+  return -1;
+}
+
+int find_fd_by_pid(pid_t pid){
+  for(int i = 0; i < MAX_PROCS; i++){
+    if(procTab[i].pid == pid){
+      return procTab[i].fd;
+    }
+  }
+  return -1;
+}
+
+
 void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   uint32_t child_stack = free_stack_chunk();
   uint32_t parent_stack = stack_index_by_pid(parent);
@@ -255,6 +308,10 @@ void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   procTab[ child ].priority = procTab[ parent ].priority;
   procTab[ child ].base_priority = procTab[ parent ].base_priority;
   procTab[ child ].parent_pid = parent;
+  int child_fd = find_free_fd();
+  procTab[ child ].fd = child_fd;
+
+  switch_fd_array(child_fd);
 
   set_stack(child);
   memcpy((uint32_t)stack[child_stack].tos - 0x00001000,
@@ -288,8 +345,12 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
       char*  x = ( char* )( ctx->gpr[ 1 ] );
       int    n = ( int   )( ctx->gpr[ 2 ] );
 
-      for( int i = 0; i < n; i++ ) {
-        PL011_putc( UART0, *x++, true );
+      if(fd == 0 || fd == 1 || fd == 2){
+        for( int i = 0; i < n; i++ ) {
+          PL011_putc( UART0, *x++, true );
+        }
+      } else {
+
       }
 
       ctx->gpr[ 0 ] = n;
@@ -326,7 +387,17 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
         procTab[proc_i].status = STATUS_TERMINATED;
         stack[stack_i].in_use = false;
         stack[stack_i].pid = 0;
-        executing = &procTab[find_index_by_pid(executing->parent_pid)];
+        pid_t parent_id = find_index_by_pid(executing->parent_pid);
+        // if(procTab[parent_id].status == STATUS_WAITING){
+        //   procTab[parent_id].status == STATUS_EXECUTING;
+        //
+        // }
+        if(   procTab[parent_id].status == STATUS_INVALID
+           || procTab[parent_id].status == STATUS_TERMINATED){
+             executing = &procTab[0];
+        } else {
+          executing = &procTab[parent_id];
+        }
       }
       else{
 
@@ -349,6 +420,41 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
     }
     case SYS_NICE : {//nice
       PL011_putc( UART0, 'n', true );
+
+      break;
+    }
+
+    case SYS_PIPE : {//pipe
+      PL011_putc( UART0, 'P', true );
+
+      int fd[] = {ctx->gpr[0], ctx->gpr[1]};
+
+      int new_pipe_id = find_free_pipe;
+      memset(&pipes[new_pipe_id].data, 0, sizeof(pipe_struct));
+      switch_pipe_in_use(new_pipe_id);
+
+
+
+      break;
+    }
+    case SYS_GET_PID : {//get_pid
+      PL011_putc( UART0, 'G', true );
+      ctx->gpr[0] = executing->pid;
+
+      break;
+    }
+
+    // case SYS_WAIT : {//wait for children to terminate
+    //   PL011_putc( UART0, 'W', true );
+    //   pid_t wait_id = executing->pid;
+    //   schedule(ctx);
+    //   procTab[find_index_by_pid(wait_id)].status = STATUS_WAITING;
+    //   break;
+    // }
+
+    case SYS_GET_FD : {//get_fd
+      PL011_putc( UART0, 'D', true );
+      ctx->gpr[0] = find_fd_by_pid(ctx->gpr[0]);
 
       break;
     }
