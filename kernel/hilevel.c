@@ -142,8 +142,9 @@ void hilevel_handler_rst(ctx_t* ctx ) {
   switch_fd_array(2);
 
   for( int i = 0; i < 2 * MAX_PROCS; i++ ) {
-      pipes[i].id = i;
-      switch_pipe_in_use(i);
+      pipes[i].fd_write = -1;
+      pipes[i].fd_read = -1;
+      pipes[i].in_use = false;
   }
 
 
@@ -294,6 +295,15 @@ int find_fd_by_pid(pid_t pid){
   return -1;
 }
 
+int find_pipe_by_fds(int fd_read, int fd_write){
+  for(int i = 0; i < 2 * MAX_PROCS; i++){
+    if(pipes[i].fd_read == fd_read && pipes[i].fd_write == fd_write){
+      return i;
+    }
+  }
+  return -1;;
+}
+
 
 void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   uint32_t child_stack = free_stack_chunk();
@@ -324,6 +334,16 @@ void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   CURRENT_PROCS++;
 }
 
+int initPipe(int fd_read, int fd_write){
+  int new_pipe_index = find_free_pipe();
+  memset(&pipes[new_pipe_index].data, 0, sizeof(pipe_struct));
+  switch_pipe_in_use(new_pipe_index);
+  pipes[new_pipe_index].fd_read = fd_read;
+  pipes[new_pipe_index].fd_write = fd_write;
+  return new_pipe_index;
+}
+
+
 void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
   /* Based on the identifier (i.e., the immediate operand) extracted from the
    * svc instruction,
@@ -345,12 +365,8 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
       char*  x = ( char* )( ctx->gpr[ 1 ] );
       int    n = ( int   )( ctx->gpr[ 2 ] );
 
-      if(fd == 0 || fd == 1 || fd == 2){
-        for( int i = 0; i < n; i++ ) {
-          PL011_putc( UART0, *x++, true );
-        }
-      } else {
-
+      for( int i = 0; i < n; i++ ) {
+        PL011_putc( UART0, *x++, true );
       }
 
       ctx->gpr[ 0 ] = n;
@@ -367,6 +383,7 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
         x[i] = PL011_getc( UART0,true );
       }
 
+
       ctx->gpr[ 0 ] = n;
 
       break;
@@ -378,7 +395,6 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
       break;
     }
     case SYS_EXIT : {//exit
-      PL011_putc( UART0, 'E', true );
       uint32_t x = (uint32_t)(ctx->gpr[0]);
 
       if(x == EXIT_SUCCESS){
@@ -425,20 +441,14 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
     }
 
     case SYS_PIPE : {//pipe
-      PL011_putc( UART0, 'P', true );
 
       int fd[] = {ctx->gpr[0], ctx->gpr[1]};
+      int pipe_id = initPipe(fd[0], fd[1]);
 
-      int new_pipe_id = find_free_pipe;
-      memset(&pipes[new_pipe_id].data, 0, sizeof(pipe_struct));
-      switch_pipe_in_use(new_pipe_id);
-
-
-
+      ctx->gpr[0] = pipe_id;
       break;
     }
-    case SYS_GET_PID : {//get_pid
-      PL011_putc( UART0, 'G', true );
+    case SYS_GET_PID : {//get pid of currently running process
       ctx->gpr[0] = executing->pid;
 
       break;
@@ -452,9 +462,44 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
     //   break;
     // }
 
-    case SYS_GET_FD : {//get_fd
-      PL011_putc( UART0, 'D', true );
+    case SYS_GET_FD : {
       ctx->gpr[0] = find_fd_by_pid(ctx->gpr[0]);
+
+      break;
+    }
+
+    case SYS_WRITE_TO_PIPE : {
+      int   pipe_index = ( int   )( ctx->gpr[ 0 ] );
+      char*  x = ( char* )( ctx->gpr[ 1 ] );
+      int    n = ( int   )( ctx->gpr[ 2 ] );
+
+
+
+      for( int i = 0; i < n; i++ ) {
+         pipes[pipe_index].data[i] = *x++;
+      }
+
+      ctx->gpr[ 0 ] = n;
+
+      break;
+    }
+    case SYS_READ_FROM_PIPE : { //read
+
+      int   pipe_index = ( int   )( ctx->gpr[ 0 ] );
+      char*  x = ( char* )( ctx->gpr[ 1 ] );
+      int    n = ( int   )( ctx->gpr[ 2 ] );
+
+      for( int i = 0; i < n; i++ ) {
+        x[i] = pipes[pipe_index].data[i];
+      }
+
+
+      ctx->gpr[ 0 ] = n;
+
+      break;
+    }
+    case SYS_GET_PIPE_BY_FDS : {
+      ctx->gpr[0] = find_pipe_by_fds(ctx->gpr[0], ctx->gpr[1]);
 
       break;
     }

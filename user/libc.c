@@ -148,16 +148,17 @@ void nice( int pid, int x ) {
   return;
 }
 
-void pipe(int fd1, int fd2){
-
-  asm volatile( "mov r0, %1 \n" // assign r0 =  fd1
-                "mov r1, %2 \n" // assign r1 =  fd2
-                "svc %0     \n" // make system call SYS_PIPE
-              :
+int pipe(int fd1, int fd2){
+  int r;
+  asm volatile( "mov r0, %2 \n" // assign r0 =  pid
+                "mov r1, %3 \n" // assign r1 =    x
+                "svc %1     \n" // make system call SYS_PIPE
+                "mov %0, r0 \n" // assign r0 =    r
+              : "=r" (r)
               : "I" (SYS_PIPE), "r" (fd1), "r" (fd2)
               : "r0", "r1" );
 
-  return;
+  return r;
 }
 int get_pid(){
   int r;
@@ -188,8 +189,52 @@ int get_fd(pid_t pid){
                 "svc %1     \n" // make system call SYS_FD
                 "mov %0, r0 \n" // assign r0 =    r
               : "=r" (r)
-              : "I" (SYS_KILL), "r" (pid)
+              : "I" (SYS_GET_FD), "r" (pid)
               : "r0");
+
+  return r;
+}
+
+int write_to_pipe( int pipe_id, const void* x, size_t n ) {
+  int r;
+
+  asm volatile( "mov r0, %2 \n" // assign r0 = fd
+                "mov r1, %3 \n" // assign r1 =  x
+                "mov r2, %4 \n" // assign r2 =  n
+                "svc %1     \n" // make system call SYS_WRITE_TO_PIPE
+                "mov %0, r0 \n" // assign r  = r0
+              : "=r" (r)
+              : "I" (SYS_WRITE_TO_PIPE), "r" (pipe_id), "r" (x), "r" (n)
+              : "r0", "r1", "r2" );
+
+  return r;
+}
+
+int read_from_pipe( int pipe_id,       void* x, size_t n ) {
+  int r;
+
+  asm volatile( "mov r0, %2 \n" // assign r0 = fd
+                "mov r1, %3 \n" // assign r1 =  x
+                "mov r2, %4 \n" // assign r2 =  n
+                "svc %1     \n" // make system call SYS_READ_FROM_PIPE
+                "mov %0, r0 \n" // assign r  = r0
+              : "=r" (r)
+              : "I" (SYS_READ_FROM_PIPE),  "r" (pipe_id), "r" (x), "r" (n)
+              : "r0", "r1", "r2" );
+
+  return r;
+}
+
+int get_pipe_by_fds(int fd_read, int fd_write){
+  int r;
+
+  asm volatile( "mov r0, %2 \n" // assign r0 =  pid
+                "mov r1, %3 \n" // assign r1 =    x
+                "svc %1     \n" // make system call SYS_GET_PIPE_BY_FDS
+                "mov %0, r0 \n" // assign r0 =    r
+              : "=r" (r)
+              : "I" (SYS_GET_PIPE_BY_FDS), "r" (fd_read), "r" (fd_write)
+              : "r0", "r1" );
 
   return r;
 }

@@ -42,7 +42,9 @@ typedef int pid_t;
 #define SYS_GET_PID   ( 0x09 )
 // #define SYS_WAIT      ( 0x10 )
 #define SYS_GET_FD    ( 0x11 )
-
+#define SYS_WRITE_TO_PIPE     ( 0x12 )
+#define SYS_READ_FROM_PIPE    ( 0x13 )
+#define SYS_GET_PIPE_BY_FDS    ( 0x14 )
 
 #define SIG_TERM      ( 0x00 )
 #define SIG_QUIT      ( 0x01 )
@@ -79,14 +81,19 @@ extern int  kill( pid_t pid, int x );
 // for process identified by pid, set  priority to x
 extern void nice( pid_t pid, int x );
 // create a pipe
-extern void pipe( int fd1, int fd2 );
+extern int pipe( int fd1, int fd2 );
 // return pid of executing process
 extern int get_pid();
 // waits for children to terminate
 // extern int wait();
 // return fd of a process
-extern int get_fd();
-
+extern int get_fd(int pid);
+// write to pipe
+extern int write_to_pipe( int pipe_id, const void* x, size_t n);
+// read from pipe
+extern int read_from_pipe(int pipe_id,       void* x, size_t n );
+// returns index of the pipe between given fds
+extern int get_pipe_by_fds(int fd_read, int fd_);
 
 
 #endif

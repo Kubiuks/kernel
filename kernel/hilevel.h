@@ -75,7 +75,6 @@ typedef struct {
 } fd_struct;
 
 typedef struct {
-  int   id;          // id of the pipe
   bool in_use;       // indicates wheter the pipe is assigned to some process
   int   fd_write;    // writing end of the pipe
   char  data[100];   // data being send through the channel
