@@ -1,6 +1,5 @@
 #include "DINE.h"
 
-#define MAX_PHILOSOPHERS 16
 #define dirty 0
 #define clean 1
 #define missing -1
@@ -8,16 +7,18 @@
 #define NUM_MIN 5
 
 
-// =dining philosphers with Chandy/Misra solution
+
 extern void main_Philosopher();
 
 
 // function implementing dining philosophers
+// Chandy/Misra solution
+// words "fork" and "chopstick" are used interchangeably
 void main_DINE() {
 
   //variables philosophers share
   static int current = -1;
-  static int pid_of_philosophers[MAX_PHILOSOPHERS];
+  static int pid_of_philosophers[16];
 
   //variables which philosophers have their own copy of
   int left_chopstick = missing;
@@ -25,7 +26,7 @@ void main_DINE() {
 
   // forks 15 time to create 16 philosophers in total
   // break if child
-  for(int i = 1; i < MAX_PHILOSOPHERS; i++){
+  for(int i = 1; i < 16; i++){
     if(fork() == 0){
         break;
     }
@@ -44,6 +45,7 @@ void main_DINE() {
   puts("\n", 1);
 
   // yeild to wait for other philosophers to finish set up
+
   yield();
 
   // every philosopher creates a pipe with each of his neighbours
@@ -64,6 +66,7 @@ void main_DINE() {
   int left_write_pipe_id = pipe(fd1[0], fd1[1]);
   int right_write_pipe_id = pipe(fd2[0], fd2[1]);
 
+
   // yield to wait for other philosophers to create all channels of communication
   yield();
 
@@ -81,6 +84,9 @@ void main_DINE() {
     right_read_pipe_id = get_pipe_by_fds(my_fd, get_fd(pid_of_philosophers[my_id + 1]));
   }
 
+
+  yield();
+
   // gets a pseudo random number
   int x, y;
   x = rand() % (NUM_MAX + 1 - NUM_MIN) + NUM_MIN;
@@ -95,10 +101,15 @@ void main_DINE() {
   //we adjust philo 0 and philo MAX_PHILOSOPHERS - 1 fork count
   if(my_id == 0){
     left_chopstick = dirty;
-  } else if(my_id == MAX_PHILOSOPHERS - 1){
+  } else if(my_id == 15){
     right_chopstick == missing;
   }
-
+  // if philosopher gets request but the fork is clean we defer giving it back
+  // defer[0] refers to left fork
+  // defer[1] refers to right fork
+  // value 1 means fork needs to be returned immediately after eating
+  // value 0 means the is no sending needed
+  int defer[2];
 
   // philosophers think for some time
   // while thinking, their neighbours might request them to give them a fork
@@ -117,27 +128,35 @@ void main_DINE() {
         uint32_t lo = 1 <<  8;
         uint32_t hi = 1 << 16;
 
+        puts("Philosopher $ ", 12);
+        puts(id, 3);
+        puts("is thinking \n$ ", 13);
 
         for( uint32_t x = lo; x < hi; x++ ) {
           int r = is_prime( x );
         }
 
-        int l = read_from_pipe(left_read_pipe_id, left_channel_data, 1);
-        if(left_channel_data[0] == "g"){
+        read_from_pipe(left_read_pipe_id, left_channel_data, 1);
+        if(left_channel_data[0] == 'g'){
           if(left_chopstick == dirty){
               write_to_pipe(left_write_pipe_id, "r", 1);
               left_chopstick = missing;
           }
         }
 
-        int r = read_from_pipe(right_read_pipe_id, right_channel_data, 1);
-        if(right_channel_data[0] == "g"){
+        read_from_pipe(right_read_pipe_id, right_channel_data, 1);
+        if(right_channel_data[0] == 'g'){
           if(right_chopstick == dirty){
             write_to_pipe(right_write_pipe_id, "r", 1);
             right_chopstick = missing;
           }
         }
       }
+
+      puts("Philosopher $ ", 12);
+      puts(id, 3);
+      puts("wants to eat \n$ ", 14);
+
       // if any chopstick is missing, we request it
       // and keep yielding until we get it
       if(right_chopstick == missing || left_chopstick == missing){
@@ -148,19 +167,36 @@ void main_DINE() {
           write_to_pipe(right_write_pipe_id, "g", 1);
         }
         while(left_chopstick == missing || right_chopstick == missing){
-          yield();
-          if(left_chopstick == missing){
-            read_from_pipe(left_read_pipe_id, left_channel_data, 1);
-            if(left_channel_data == "r"){
-              left_chopstick = clean;
+          read_from_pipe(left_read_pipe_id, left_channel_data, 1);
+          if(left_channel_data[0] == 'r'){
+            left_chopstick = clean;
+          } else if(left_channel_data[0] == 'g'){
+            if(left_chopstick == dirty){
+              write_to_pipe(left_write_pipe_id, "r", 1);
+              left_chopstick = missing;
+            } else if(left_chopstick == clean){
+                defer[0] = 1;
             }
+          }
+          read_from_pipe(right_read_pipe_id, right_channel_data, 1);
+          if(right_channel_data[0] == 'r'){
+            right_chopstick = clean;
+          } else if(right_channel_data[0] == 'g'){
+            if(right_chopstick == dirty){
+              write_to_pipe(right_write_pipe_id, "r", 1);
+              right_chopstick = missing;
+            } else if(right_chopstick == clean){
+                defer[1] = 1;
+            }
+          }
+          if(left_chopstick == missing){
+            write_to_pipe(left_write_pipe_id, "g", 1);
           }
           if(right_chopstick == missing){
-            read_from_pipe(right_read_pipe_id, right_channel_data, 1);
-            if(right_channel_data == "r"){
-              right_chopstick = clean;
-            }
+            write_to_pipe(right_write_pipe_id, "g", 1);
           }
+          yield();
+
         }
       }
       // philosopher now wants to eat
@@ -171,10 +207,10 @@ void main_DINE() {
         right_chopstick = clean;
       }
       // if we have both chopsticks we can start eating
-      puts("Philosopher $ ", 12);
-      puts(id, 3);
-      puts("is eating \n$ ", 11);
       if(left_chopstick == clean && right_chopstick == clean){
+        puts("Philosopher $ ", 12);
+        puts(id, 3);
+        puts("is eating \n$ ", 11);
         //simulate eating time
         for( int i = 0; i < y; i++ ) {
 
@@ -192,5 +228,14 @@ void main_DINE() {
       // after eating we set the chopsticks to dirty
       left_chopstick = dirty;
       right_chopstick = dirty;
+      // send defered chopsticks
+      if(defer[0] = 1){
+        write_to_pipe(left_write_pipe_id, "r", 1);
+        left_chopstick = missing;
+      }
+      if(defer[1] = 1){
+        write_to_pipe(right_write_pipe_id, "r", 1);
+        right_chopstick = missing;
+      }
   }
 }

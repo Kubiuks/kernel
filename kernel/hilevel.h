@@ -32,7 +32,7 @@
 #include "console.h"
 
 
-#define MAX_PROCS 40
+#define MAX_PROCS 30
 #define MIN_FD 3
 
 typedef int pid_t;
@@ -76,9 +76,9 @@ typedef struct {
 
 typedef struct {
   bool in_use;       // indicates wheter the pipe is assigned to some process
-  int   fd_write;    // writing end of the pipe
   char  data[100];   // data being send through the channel
   int   fd_read;     // reading end of the pipe
+  int   fd_write;    // writing end of the pipe
 } pipe_struct;
 
 #endif

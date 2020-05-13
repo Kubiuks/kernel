@@ -81,7 +81,7 @@ extern int  kill( pid_t pid, int x );
 // for process identified by pid, set  priority to x
 extern void nice( pid_t pid, int x );
 // create a pipe
-extern int pipe( int fd1, int fd2 );
+extern int pipe( int fd_read, int fd_write );
 // return pid of executing process
 extern int get_pid();
 // waits for children to terminate

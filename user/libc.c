@@ -148,14 +148,14 @@ void nice( int pid, int x ) {
   return;
 }
 
-int pipe(int fd1, int fd2){
+int pipe(int fd_read, int fd_write){
   int r;
-  asm volatile( "mov r0, %2 \n" // assign r0 =  pid
-                "mov r1, %3 \n" // assign r1 =    x
+  asm volatile( "mov r0, %2 \n" // assign r0 =  fd_read
+                "mov r1, %3 \n" // assign r1 =  fd_write
                 "svc %1     \n" // make system call SYS_PIPE
                 "mov %0, r0 \n" // assign r0 =    r
               : "=r" (r)
-              : "I" (SYS_PIPE), "r" (fd1), "r" (fd2)
+              : "I" (SYS_PIPE), "r" (fd_read), "r" (fd_write)
               : "r0", "r1" );
 
   return r;
@@ -228,8 +228,8 @@ int read_from_pipe( int pipe_id,       void* x, size_t n ) {
 int get_pipe_by_fds(int fd_read, int fd_write){
   int r;
 
-  asm volatile( "mov r0, %2 \n" // assign r0 =  pid
-                "mov r1, %3 \n" // assign r1 =    x
+  asm volatile( "mov r0, %2 \n" // assign r0 =  fd_read
+                "mov r1, %3 \n" // assign r1 =  fd_write
                 "svc %1     \n" // make system call SYS_GET_PIPE_BY_FDS
                 "mov %0, r0 \n" // assign r0 =    r
               : "=r" (r)

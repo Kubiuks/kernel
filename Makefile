@@ -1,7 +1,7 @@
 # Copyright (C) 2017 Daniel Page <csdsp@bristol.ac.uk>
 #
-# Use of this source code is restricted per the CC BY-NC-ND license, a copy of 
-# which can be found via http://creativecommons.org (and should be included as 
+# Use of this source code is restricted per the CC BY-NC-ND license, a copy of
+# which can be found via http://creativecommons.org (and should be included as
 # LICENSE.txt within the associated archive or repository).
 
 # part 1: variables
@@ -17,7 +17,7 @@
  QEMU_UART        = stdio
  QEMU_UART       += telnet:127.0.0.1:1235,server
 #QEMU_UART       += telnet:127.0.0.1:1236,server
- QEMU_DISPLAY     = -nographic -display none 
+ QEMU_DISPLAY     = -nographic -display none
 #QEMU_DISPLAY     =            -display  sdl
 
  LINARO_PATH      = /opt/software/gcc-linaro-5.1-2015.08-x86_64_arm-eabi
@@ -28,7 +28,7 @@
 %.o   : %.s
 	@${LINARO_PATH}/bin/${LINARO_PREFIX}-as  $(addprefix -I , ${PROJECT_PATH} ${LINARO_PATH}/${LINARO_PREFIX}/libc/usr/include) -mcpu=cortex-a8                                       -g                            -o ${@} ${<}
 %.o   : %.c
-	@${LINARO_PATH}/bin/${LINARO_PREFIX}-gcc $(addprefix -I , ${PROJECT_PATH} ${LINARO_PATH}/${LINARO_PREFIX}/libc/usr/include) -mcpu=cortex-a8 -mabi=aapcs -ffreestanding -std=gnu99 -g -c -fomit-frame-pointer -O -o ${@} ${<}
+	@${LINARO_PATH}/bin/${LINARO_PREFIX}-gcc $(addprefix -I , ${PROJECT_PATH} ${LINARO_PATH}/${LINARO_PREFIX}/libc/usr/include) -mcpu=cortex-a8 -mabi=aapcs -ffreestanding -std=gnu99 -g -c -fomit-frame-pointer -O0 -o ${@} ${<}
 
 %.elf : ${PROJECT_OBJECTS}
 	@${LINARO_PATH}/bin/${LINARO_PREFIX}-ld  $(addprefix -L ,                 ${LINARO_PATH}/${LINARO_PREFIX}/libc/usr/lib    ) -T ${*}.ld -o ${@} ${^} -lc -lgcc

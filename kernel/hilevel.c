@@ -132,7 +132,7 @@ void hilevel_handler_rst(ctx_t* ctx ) {
     procTab[ i ].status = STATUS_INVALID;
     procTab[ i ].fd = -1;
     stack[ i ].in_use = false;
-    stack[ i ].tos = ( uint32_t )( &tos_procs ) + (i+1) * 0x00001000;
+    stack[ i ].tos = ( uint32_t )( &tos_procs ) - (i+1) * 0x00001000;
     fd_array[ i ].in_use = false;
     fd_array[ i ].fd = i;
   }
@@ -326,7 +326,7 @@ void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   set_stack(child);
   memcpy((uint32_t)stack[child_stack].tos - 0x00001000,
          (uint32_t)stack[parent_stack].tos - 0x00001000,
-          sizeof(0x00001000));
+          0x00001000);
   memcpy(&procTab[ child ].ctx, ctx, sizeof(ctx_t));
   procTab[ child ].ctx.sp = (uint32_t)procTab[ child ].tos - ((uint32_t)procTab[parent].tos - ctx->sp) ;
   procTab[ parent ].ctx.gpr[0] = child;
@@ -442,8 +442,8 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
 
     case SYS_PIPE : {//pipe
 
-      int fd[] = {ctx->gpr[0], ctx->gpr[1]};
-      int pipe_id = initPipe(fd[0], fd[1]);
+      //int fd[] = {ctx->gpr[0], ctx->gpr[1]};
+      int pipe_id = initPipe(ctx->gpr[0], ctx->gpr[1]);
 
       ctx->gpr[0] = pipe_id;
       break;
