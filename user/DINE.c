@@ -249,12 +249,12 @@ void main_DINE() {
       // send defered chopsticks
       // we need to set the chopsticks to just_sent
       // otherwise we might ask for them before a neighbour receives them
-      if(defer[0] = 1){
+      if(defer[0] == 1){
         write_to_pipe(left_write_pipe_id, "r", 1);
         left_chopstick = just_sent;
         defer[0] = 0;
       }
-      if(defer[1] = 1){
+      if(defer[1] == 1){
         write_to_pipe(right_write_pipe_id, "r", 1);
         right_chopstick = just_sent;
         defer[1] = 0;

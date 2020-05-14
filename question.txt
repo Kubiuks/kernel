@@ -41,7 +41,7 @@ The following gives a stage-by-stage description of the assignment marking
 scheme.  Note this acts as an indicative guideline only, including weights
 for each more obvious aspect (e.g., functional correctness); other aspects
 outside this list can warrant an increase/decrease in marks, with examples
-including hard to quantify features such as style, efficiency, robustness, 
+including hard to quantify features such as style, efficiency, robustness,
 generality, or realism of a solution.  Put another way, identifying then
 reasoning about these latter aspects forms part of the assessment, so they
 are not (necessarily) detailed explicitly.
@@ -61,7 +61,7 @@ are not (necessarily) detailed explicitly.
                 *OR*
 [?]           - file system based on simplified, emulated disk
                 *OR*
-[?]           - kernel port to real, physical hardware                     
+[?]           - kernel port to real, physical hardware
 
                                                                      ------
                                                                      (100%)
@@ -74,10 +74,10 @@ Any other documentation, notes or comments that you think are important or
 might be easy to overlook (e.g., a subtle issue or technique in associated
 source code) should go here:
 
-
+The kernel starts with only the console running.
 To run the dining philosophers write "execute DINE" in the console,
-DINE will forever go on printing to the console. It is still possible to execute 
-other programs whilst running DINE, by writing to the console, even though 
+DINE will forever go on printing to the console. It is still possible to execute
+other programs whilst running DINE, by writing to the console, even though
 the letters you write will get lost in what DINE prints to it.
 
 -------------------------------------------------------------------------------
