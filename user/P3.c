@@ -21,12 +21,12 @@ void main_P3() {
   while( 1 ) {
     write( STDOUT_FILENO, "P3", 2 );
 
-    // uint32_t lo = 1 <<  8;
-    // uint32_t hi = 1 << 24;
-    //
-    // for( uint32_t x = lo; x < hi; x++ ) {
-    //   uint32_t r = weight( x );
-    // }
+    uint32_t lo = 1 <<  8;
+    uint32_t hi = 1 << 24;
+
+    for( uint32_t x = lo; x < hi; x++ ) {
+      uint32_t r = weight( x );
+    }
   }
 
   exit( EXIT_SUCCESS );

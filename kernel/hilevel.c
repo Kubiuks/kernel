@@ -48,7 +48,7 @@ void dispatch( ctx_t* ctx, pcb_t* prev, pcb_t* next ) {
   return;
 }
 
-
+// return index of a process with highest priority
 uint32_t find_priority(){
   uint32_t max = 0;
   uint32_t process = 0;
@@ -63,6 +63,8 @@ uint32_t find_priority(){
 
 void schedule( ctx_t* ctx ) {
 
+  // every processes waiting to be executed gets its
+  // priority increased by 1
   for(int i=0; i<MAX_PROCS; i++){
     if(procTab[ i ].status == STATUS_READY){
       procTab[ i ].priority++;
@@ -71,6 +73,9 @@ void schedule( ctx_t* ctx ) {
 
   uint32_t next = find_priority();
 
+  // sets the priority of the currently running process to its base value
+  // changes the status of the currently running process to STATUS_READY
+  // process with highest priority becames currently running
   for(int i=0; i<MAX_PROCS; i++){
     if(   procTab[ i ].status == STATUS_INVALID
        || procTab[ i ].status == STATUS_TERMINATED
@@ -85,9 +90,6 @@ void schedule( ctx_t* ctx ) {
       break;
     }
   }
-
-
-
   return;
 }
 
@@ -149,8 +151,6 @@ void hilevel_handler_rst(ctx_t* ctx ) {
 
 
   /*
-
-#include "console.h"
   Note in each case that
    *
    * - the CPSR value of 0x50 means the processor is switched into USR mode,
@@ -304,7 +304,9 @@ int find_pipe_by_fds(int fd_read, int fd_write){
   return -1;;
 }
 
-
+// creates new entry in the procTab
+// allocates new memory staack chunk for child
+// and copies everything from parents ctx and stack
 void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   uint32_t child_stack = free_stack_chunk();
   uint32_t parent_stack = stack_index_by_pid(parent);
@@ -331,9 +333,10 @@ void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   procTab[ child ].ctx.sp = (uint32_t)procTab[ child ].tos - ((uint32_t)procTab[parent].tos - ctx->sp) ;
   procTab[ parent ].ctx.gpr[0] = child;
   procTab[ child ].ctx.gpr[0] = 0;
-  CURRENT_PROCS++;
 }
 
+// sets memory for pipe's data
+// returns the index of a newly created pipe
 int initPipe(int fd_read, int fd_write){
   int new_pipe_index = find_free_pipe();
   memset(&pipes[new_pipe_index].data, 0, sizeof(pipe_struct));
@@ -442,7 +445,7 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
 
     case SYS_PIPE : {//pipe
 
-      //int fd[] = {ctx->gpr[0], ctx->gpr[1]};
+
       int pipe_id = initPipe(ctx->gpr[0], ctx->gpr[1]);
 
       ctx->gpr[0] = pipe_id;
