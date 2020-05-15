@@ -305,7 +305,7 @@ int find_pipe_by_fds(int fd_read, int fd_write){
 }
 
 // creates new entry in the procTab
-// allocates new memory staack chunk for child
+// allocates new memory stack chunk for child
 // and copies everything from parents ctx and stack
 void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   uint32_t child_stack = free_stack_chunk();
@@ -324,12 +324,15 @@ void initPCB(ctx_t* ctx, pid_t parent, pid_t child){
   procTab[ child ].fd = child_fd;
 
   switch_fd_array(child_fd);
-
   set_stack(child);
+  
+  // copies the stack
   memcpy((uint32_t)stack[child_stack].tos - 0x00001000,
          (uint32_t)stack[parent_stack].tos - 0x00001000,
           0x00001000);
+  // copies the context
   memcpy(&procTab[ child ].ctx, ctx, sizeof(ctx_t));
+  // adjusts the stack pointer
   procTab[ child ].ctx.sp = (uint32_t)procTab[ child ].tos - ((uint32_t)procTab[parent].tos - ctx->sp) ;
   procTab[ parent ].ctx.gpr[0] = child;
   procTab[ child ].ctx.gpr[0] = 0;
@@ -443,15 +446,14 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
       break;
     }
 
-    case SYS_PIPE : {//pipe
-
-
+    case SYS_PIPE : { // creates a pipe between given fds
+                      // returns index of a newly created pipe
       int pipe_id = initPipe(ctx->gpr[0], ctx->gpr[1]);
 
       ctx->gpr[0] = pipe_id;
       break;
     }
-    case SYS_GET_PID : {//get pid of currently running process
+    case SYS_GET_PID : { //get pid of currently running process
       ctx->gpr[0] = executing->pid;
 
       break;
@@ -465,18 +467,16 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
     //   break;
     // }
 
-    case SYS_GET_FD : {
+    case SYS_GET_FD : { // returns fd of a process with given pid
       ctx->gpr[0] = find_fd_by_pid(ctx->gpr[0]);
 
       break;
     }
 
-    case SYS_WRITE_TO_PIPE : {
+    case SYS_WRITE_TO_PIPE : {  // write what was sent to the pipe's data
       int   pipe_index = ( int   )( ctx->gpr[ 0 ] );
       char*  x = ( char* )( ctx->gpr[ 1 ] );
       int    n = ( int   )( ctx->gpr[ 2 ] );
-
-
 
       for( int i = 0; i < n; i++ ) {
          pipes[pipe_index].data[i] = *x++;
@@ -486,7 +486,8 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
 
       break;
     }
-    case SYS_READ_FROM_PIPE : { //read
+    case SYS_READ_FROM_PIPE : { // reads what's on the pipe data and writes it to
+                                // the given location in memory
 
       int   pipe_index = ( int   )( ctx->gpr[ 0 ] );
       char*  x = ( char* )( ctx->gpr[ 1 ] );
@@ -496,12 +497,12 @@ void hilevel_handler_svc( ctx_t* ctx, uint32_t id ) {
         x[i] = pipes[pipe_index].data[i];
       }
 
-
       ctx->gpr[ 0 ] = n;
 
       break;
     }
-    case SYS_GET_PIPE_BY_FDS : {
+    case SYS_GET_PIPE_BY_FDS : { // returns id of a pipe between given fds
+                                 // -1 if there is none
       ctx->gpr[0] = find_pipe_by_fds(ctx->gpr[0], ctx->gpr[1]);
 
       break;

@@ -4,7 +4,7 @@
 #define clean 1
 #define missing -1
 #define just_sent 2
-#define NUM_MAX 8
+#define NUM_MAX 12
 #define NUM_MIN 5
 
 // function implementing dining philosophers

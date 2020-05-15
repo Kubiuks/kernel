@@ -71,7 +71,7 @@ typedef struct {
 
 typedef struct {
   bool in_use;     // indicates wheter the fd is assigned to some process
-  int fd; //file descriptor
+  int fd;          //file descriptor
 } fd_struct;
 
 typedef struct {

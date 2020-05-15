@@ -16,7 +16,7 @@
 So that we can calibrate and improve the assignment in the future, give us
 a rough idea how long (in hours) you spent on it *in total*:
 
-effort : 90 hours
+effort : 80 hours
 
 -------------------------------------------------------------------------------
 
@@ -74,6 +74,8 @@ Any other documentation, notes or comments that you think are important or
 might be easy to overlook (e.g., a subtle issue or technique in associated
 source code) should go here:
 
+
+console server 1235.
 The kernel starts with only the console running.
 To run the dining philosophers write "execute DINE" in the console,
 DINE will forever go on printing to the console. It is still possible to execute
